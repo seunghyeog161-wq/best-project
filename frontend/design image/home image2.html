@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NOVIC — 메인</title>
+  <meta name="color-scheme" content="dark light" />
+  <style>
+    :root {
+      --bg-1: #0e0e16;
+      --bg-2: #1b1b29;
+      --card-1: #1a1a28;
+      --card-2: #26263a;
+      --text-1: #ececec;
+      --text-2: #b7b7c4;
+      --brand: #c5a028; /* 골드 포인트 */
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+      --radius-xl: 20px;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --blur: saturate(120%) blur(6px);
+    }
+    .toast {
+      position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
+      max-width: 90vw; padding: 12px 16px; border-radius: 12px;
+      background: rgba(20,20,30,.9);
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: 0 10px 28px rgba(0,0,0,.45);
+      color: #fff; font-size: 14px; z-index: 9999; opacity: 0;
+      transition: opacity .2s ease, transform .2s ease;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(-6px); }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", Arial, sans-serif;
+      color: var(--text-1);
+      background: radial-gradient(1200px 800px at 20% 10%, #23233a, transparent 60%),
+                  radial-gradient(1000px 700px at 80% 90%, #1d1d2f, transparent 60%),
+                  linear-gradient(135deg, var(--bg-1), var(--bg-2));
+      overflow: hidden;
+    }
+
+    /* 페이드 전환 공통 */
+    .fade-in { animation: fadeIn 480ms ease forwards; }
+    .fade-out { animation: fadeOut 380ms ease forwards; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; visibility: hidden; } }
+
+    /* 인트로 전체 */
+    #intro {
+      position: fixed; inset: 0;
+      display: grid; place-items: center;
+      z-index: 999;
+      background: black;
+      overflow: hidden;
+    }
+    #intro video {
+      width: 100%; height: 100%; object-fit: cover;
+      filter: brightness(0.82) contrast(1.05);
+    }
+
+    /* 인트로 오버레이 UI */
+    .intro-overlay {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      justify-content: space-between; align-items: stretch;
+      pointer-events: auto; /* 오버레이 자체도 클릭 허용 */
+      background: linear-gradient(to bottom, rgba(0,0,0,0.35), transparent 35%, transparent 65%, rgba(0,0,0,0.55));
+    }
+    .intro-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px; gap: 12px;
+    }
+    .reveal {
+        opacity: 0;
+        transform: translateY(16px);
+        transition: opacity .5s ease, transform .5s ease;
+    }
+    .reveal.is-in {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    /* 9) 키보드 포커스 가시화 */
+    .card:focus-visible,
+    .cta:focus-visible,
+    .skip-btn:focus-visible {
+        outline: 2px solid var(--brand);
+        outline-offset: 4px;
+    }
+
+    /* 모션 최소화 사용자의 경우 애니메이션 제거 */
+    @media (prefers-reduced-motion: reduce) {
+        .reveal { transition: none; transform: none; opacity: 1; }
+    }
+    .logo {
+      color: var(--brand);
+      font-weight: 900;
+      letter-spacing: .6px;
+      text-shadow:
+        0 1px 0 rgba(0,0,0,.25),
+        0 2px 2px rgba(0,0,0,.25),
+        0 6px 14px rgba(0,0,0,.45),
+        0 0 18px rgba(197,160,40,.35); /* 골드 글로우 */
+    }
+    .logo {
+      background: linear-gradient(180deg, #ffd86a, #c5a028 65%, #8a6c10);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      -webkit-text-stroke: .6px rgba(0,0,0,.35);
+      text-shadow: 0 8px 20px rgba(0,0,0,.45);
+    }
+    .logo { display:inline-block; transition: transform .18s ease, filter .2s; }
+    .logo:hover { transform: rotateX(8deg) rotateY(-6deg) translateY(-1px); filter: drop-shadow(0 10px 18px rgba(0,0,0,.35)); }
+    .skip-btn {
+      pointer-events: auto;
+      appearance: none; border: 0; cursor: pointer;
+      background: color-mix(in srgb, var(--brand) 88%, #000 12%);
+      color: #111; font-weight: 700; font-size: 14px;
+      padding: 10px 16px; border-radius: 999px;
+      box-shadow: 0 6px 18px rgba(197,160,40,0.35);
+      transition: transform .15s ease, box-shadow .2s ease, filter .2s ease;
+    }
+    .skip-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(197,160,40,0.45); filter: brightness(1.03); }
+    .skip-btn:active { transform: translateY(0); }
+    .card:not(.tilt-enabled):hover {
+      transform: translateY(-8px) scale(1.02);
+      box-shadow: 0 18px 46px rgba(0,0,0,0.65);
+      border-color: color-mix(in srgb, var(--brand) 45%, #fff 55%);
+    }
+
+    .intro-bottom {
+      display: grid; place-items: center;
+      padding: 28px; gap: 16px;
+    }
+    .headline {
+      pointer-events: none;
+      font-size: clamp(20px, 3.8vw, 40px);
+      font-weight: 800; text-align: center; line-height: 1.2;
+      color: #fff;
+      text-shadow: 0 8px 30px rgba(0,0,0,0.55);
+    }
+    .subhead { color: #e9e9ef; opacity: .9; font-size: clamp(13px, 1.6vw, 16px); text-align: center; margin-top: 6px; }
+    #intro .logo {
+      background: linear-gradient(180deg, #ffd86a, #c5a028 65%, #8a6c10);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      -webkit-text-stroke: .6px rgba(0,0,0,.35);
+      text-shadow: 0 0 6px rgba(0,0,0,.6), 0 10px 26px rgba(0,0,0,.55), 0 0 18px rgba(197,160,40,.35);
+    }
+
+    /* 진행바 */
+    .progress {
+      pointer-events: none;
+      width: min(560px, 86vw);
+      height: 4px; border-radius: 999px;
+      background: rgba(255,255,255,0.2); overflow: hidden;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+    }
+    .progress > span { display: block; height: 100%; width: 0%; background: var(--brand); transition: width linear; }
+
+    /* 메인 UI */
+    #main-ui {
+      position: relative; display: none; height: 100vh;
+      display: grid; grid-template-rows: auto 1fr; gap: 0;
+    }
+    .card.tilt-enabled:hover {
+      box-shadow: 0 18px 46px rgba(0,0,0,0.65);
+      border-color: color-mix(in srgb, var(--brand) 45%, #fff 55%);
+    }
+
+    /* 틸트 아닌 카드만 기존 위로 살짝 뜨는 효과 유지 */
+    .card:not(.tilt-enabled):hover {
+      transform: translateY(-8px) scale(1.02);
+      box-shadow: 0 18px 46px rgba(0,0,0,0.65);
+      border-color: color-mix(in srgb, var(--brand) 45%, #fff 55%);
+    }
+    .cta {
+      position: relative;
+      overflow: hidden; /* 효과가 버튼 밖으로 튀어나가지 않게 */
+      isolation: isolate; /* 블렌딩 안정화 */
+    }
+  .cta::after {
+    content: "";
+    position: absolute; inset: 0;
+    transform: translateX(-130%);
+    background: radial-gradient(120px 60px at 10% 50%, rgba(255,255,255,.25), transparent 60%);
+    transition: transform .6s ease;
+    pointer-events: none;
+  }
+  .cta:hover::after {
+    transform: translateX(130%);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cta::after { transition: none; transform: none; background: none; }
+  }
+  .card.tilt-enabled {
+    --rx: 0deg;  /* 회전 X */
+    --ry: 0deg;  /* 회전 Y */
+    --ty: 0px;   /* 위로 떠오르기 */
+    transform: rotateX(var(--rx)) rotateY(var(--ry)) translateY(var(--ty));
+    transform-style: preserve-3d;
+    will-change: transform;
+    transition: transform .12s ease-out, box-shadow .2s ease, border-color .2s ease;
+  }
+
+    .navbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 22px; backdrop-filter: var(--blur);
+      background: linear-gradient(180deg, rgba(20,20,30,0.72), rgba(20,20,30,0.38));
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      box-shadow: var(--shadow);
+    }
+    .nav-right { display: flex; align-items: center; gap: 10px; }
+    .pill {
+      font-size: 12px; color: var(--text-2);
+      padding: 6px 10px; border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    
+
+    .intro-center-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: clamp(32px, 5vw, 68px);
+      font-weight: 800;
+      color: #fff;
+      text-align: center;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, #ffffff 0%, #d4af37 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 8px 24px rgba(0,0,0,0.55);
+      animation: fadeInUp 1.6s ease forwards, glowPulse 4s ease-in-out infinite;
+    }
+
+@keyframes glowPulse {
+  0%,100% { text-shadow: 0 6px 20px rgba(0,0,0,0.5), 0 0 16px rgba(197,160,40,0.4); }
+  50%     { text-shadow: 0 6px 26px rgba(0,0,0,0.7), 0 0 28px rgba(197,160,40,0.65); }
+}
+
+    .main-content {
+      display: grid; place-items: center; padding: 28px;
+    }
+    .content-wrap {
+      display: grid; gap: 26px; width: min(1120px, 92vw);
+      grid-template-columns: 1.2fr 1fr; align-items: center;
+    }
+    .hero {
+      background: linear-gradient(145deg, var(--card-2), var(--card-1));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius-xl);
+      padding: clamp(18px, 2.6vw, 28px);
+      box-shadow: var(--shadow);
+    }
+    .hero h1 { font-size: clamp(24px, 4vw, 42px); margin: 4px 0 10px; }
+    .hero p { color: var(--text-2); margin: 0; font-size: clamp(14px, 1.6vw, 16px); }
+
+    .cards {
+      display: grid; gap: 16px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .card {
+      cursor: pointer;
+      background: linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      box-shadow: var(--shadow);
+      transition: 
+        transform 0.22s ease,
+        box-shadow 0.22s ease,
+        border-color 0.22s ease;
+      will-change: transform; /* 성능 개선 */
+    }
+
+    .card:hover {
+      transform: translateY(-10px) scale(1.04) rotateX(1deg) rotateY(-1deg); /* 위로 뜨면서 살짝 확대 */
+      box-shadow: 0 18px 46px rgba(0,0,0,0.65);
+      border-color: color-mix(in srgb, var(--brand) 45%, #fff 55%);
+    }
+    
+    .card h3 { margin: 2px 0 8px; font-size: 18px; color: var(--brand); }
+    .card p { margin: 0; color: var(--text-2); font-size: 14px; }
+
+    .cta {
+      margin-top: 18px;
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
+      background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.04));
+      color: var(--text-1); text-decoration: none; font-weight: 700;
+      transition: transform .14s ease, box-shadow .2s ease;
+    }
+    .cta:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(0,0,0,0.45); }
+
+    /* 푸터 배지 */
+    .footer { position: fixed; right: 14px; bottom: 12px; opacity: .8; font-size: 12px; color: var(--text-2); }
+
+    /* 반응형 */
+    @media (max-width: 960px) {
+      .content-wrap { grid-template-columns: 1fr; }
+      .cards { grid-template-columns: 1fr; }
+    }
+
+    /* 모션 최소화 환경 배려 */
+    @media (prefers-reduced-motion: reduce) {
+      .fade-in, .fade-out, .card:hover, .skip-btn:hover, .cta:hover { animation: none; transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <!-- 인트로 -->
+  <section id="intro" aria-label="인트로 영상" class="fade-in">
+    <video id="intro-video" autoplay muted playsinline aria-hidden="true">
+      <source src="intro.mp4" type="video/mp4" />
+      브라우저가 비디오 태그를 지원하지 않습니다.
+    </video>
+
+      <div class="intro-overlay" aria-hidden="true">
+        <div class="intro-topbar">
+        <div class="logo" aria-label="NOVIC 로고">NOVIC</div>
+        <button id="skipBtn" class="skip-btn" type="button" aria-label="인트로 건너뛰기">건너뛰기 ⏭️</button>
+        </div>
+
+        <!-- 가운데 텍스트 -->
+        <div class="intro-center-text">become who you are</div>
+
+        <div class="intro-bottom">
+        <div>
+            
+            <div class="subhead">최고의 추천을 위해 노력하겠습니다…</div>
+        </div>
+        <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <span id="progressBar"></span>
+        </div>
+        </div>
+    </div>
+    </section>
+
+
+  <!-- 메인 UI -->
+  <main id="main-ui" role="main" aria-live="polite" aria-busy="true" hidden>
+    <nav class="navbar" aria-label="주요 메뉴">
+      <div class="logo">NOVIC</div>
+      <div class="nav-right">
+        <span class="pill" aria-hidden="true">Alpha</span>
+      </div>
+    </nav>
+
+    <section class="main-content">
+      <div class="content-wrap fade-in">
+        <article class="hero reveal">
+            <h1>나에게 맞는 최고의 옷</h1>
+            <p>AI가 취향을 분석해 옷을 추천해 드립니다. 당장 AI추천을 받아보세요.</p>
+            <a class="cta" href="desing%20image3.html" id="startAI" role="button" aria-label="AI 추천 시작">
+              ✨ AI 추천 시작
+            </a>
+            </article>
+
+            <div class="cards" aria-label="빠른 작업">
+              <div
+              class="card reveal tilt-enabled lift"
+              tabindex="0"
+              role="button"
+              aria-label="마네킹"
+              data-link="../maspking.html" 
+            >
+                <h3>마네킹</h3>
+                <p>마네킹의 정보를 토대로 AI가 더 좋은 추천을 할수있습니다.</p>
+              </div>
+
+              <div
+                class="card reveal tilt-enabled lift"
+                tabindex="0"
+                role="button"
+                aria-label="취향 프로필"
+                data-link="../SURVAY.html">
+              
+                <h3>🧭 취향 프로필</h3>
+                <p>몇 가지 선호만 체크하면 더 정교해져요.</p>
+              </div>
+            </div>
+            </div> 
+      </div>
+    </section>
+  </main>
+
+  <div class="footer">© NOVIC</div>
+
+  <script>
+    const $ = (s, p = document) => p.querySelector(s);
+    const intro = $('#intro');
+    const mainUI = $('#main-ui');
+    const video = $('#intro-video');
+    const skipBtn = $('#skipBtn');
+    const progressBar = $('#progressBar');
+    const progressWrap = progressBar?.parentElement;
+
+    let revealTimer = null;
+    let progressTimer = null;
+    const INTRO_TIMEOUT = 5500; // ms
+
+    function revealMainUI() {
+      if (!intro) return;
+      // 중복 실행 방지
+      if (intro.getAttribute('data-closed') === '1') return;
+      intro.setAttribute('data-closed', '1');
+
+      // 페이드 아웃 → 숨김
+      intro.classList.add('fade-out');
+      setTimeout(() => {
+        document.body.style.overflow = 'auto';
+        intro.style.display = 'none';
+        mainUI.hidden = false;
+        mainUI.style.display = 'grid';
+        mainUI.setAttribute('aria-busy', 'false');
+        mainUI.classList.add('fade-in');
+      }, 320);
+
+      // 자원 정리
+      if (video) { try { video.pause(); } catch (e) {} }
+      if (revealTimer) clearTimeout(revealTimer);
+      if (progressTimer) cancelAnimationFrame(progressTimer);
+    }
+
+    function startProgress(duration) {
+      if (!progressBar) return;
+      const start = performance.now();
+      const step = (now) => {
+        const elapsed = Math.min(now - start, duration);
+        const pct = Math.round((elapsed / duration) * 100);
+        progressBar.style.width = pct + '%';
+        progressWrap?.setAttribute('aria-valuenow', String(pct));
+        if (elapsed < duration) {
+          progressTimer = requestAnimationFrame(step);
+        }
+      };
+      progressTimer = requestAnimationFrame(step);
+    }
+
+    // 이벤트: 영상 종료 시 전환
+    if (video) {
+      video.addEventListener('ended', revealMainUI);
+      video.addEventListener('error', () => {
+        // 비디오 로드 실패 시 바로 전환
+        revealMainUI();
+      });
+    }
+
+    // 5.5초 후 자동 전환 (영상이 짧거나 자동재생 제한 대비)
+    revealTimer = setTimeout(revealMainUI, INTRO_TIMEOUT);
+    startProgress(INTRO_TIMEOUT);
+
+    // 스킵 버튼
+    if (skipBtn) {
+      skipBtn.addEventListener('click', () => {
+        revealMainUI();
+      });
+      // 키보드 접근성 보조 (Enter/Space)
+      skipBtn.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault(); revealMainUI();
+        }
+      });
+    }
+
+    // 모션 최소화 설정 시: 바로 메인으로
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (mq.matches) {
+      revealMainUI();
+    }
+
+    // 데모용 클릭 핸들러
+    document.getElementById('startAI')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      location.href = 'desing%20image3.html';
+    });
+
+    // 카드 키보드 활성화
+    document.querySelectorAll('.card[role="button"]').forEach(card => {
+      card.addEventListener('click', () => {
+        const link = card.getAttribute('data-link');
+
+        // ✅ data-link가 있으면 해당 페이지로 이동
+        if (link) {
+          window.location.href = link;
+          return;
+        }
+
+        // ❌ 아니면 기존 메시지 출력
+        const label = card.getAttribute('aria-label') || '동작';
+        showToast(label + ' (연결 예정)');
+      });
+
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          card.click();
+        }
+      });
+    });
+
+      (() => {
+    const targets = document.querySelectorAll('.reveal');
+    if (!targets.length) return;
+
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReduced) {
+      targets.forEach(el => el.classList.add('is-in'));
+      return;
+    }
+
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-in');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+
+    targets.forEach(el => io.observe(el));
+  })();
+
+  // === 9) 포커스 접근성 보강 ===
+  (() => {
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        document.documentElement.classList.add('using-keyboard');
+      }
+    });
+    window.addEventListener('mousedown', () => {
+      document.documentElement.classList.remove('using-keyboard');
+    });
+  })();
+
+
+
+
+
+  // === 4) 카드 패럴랙스 틸트 ===
+(() => {
+  // 포인터가 정교한 환경(마우스 등)에서만 작동
+  if (!matchMedia('(pointer:fine)').matches) return;
+
+  const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+  const cards = document.querySelectorAll('.card.tilt-enabled');
+  let rafId = null;
+
+  cards.forEach(card => {
+    let current = { rx: 0, ry: 0 };
+    let target = { rx: 0, ry: 0 };
+
+    const onMove = (e) => {
+      const r = card.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width;   // 0 ~ 1
+      const y = (e.clientY - r.top) / r.height;   // 0 ~ 1
+      target.ry = clamp((x - 0.5) * 16, -12, 12); // 좌우 기울기
+      target.rx = clamp((0.5 - y) * 16, -12, 12); // 상하 기울기
+      loop();
+    };
+
+    const onLeave = () => {
+      target.rx = 0; target.ry = 0;
+      loop();
+    };
+
+    const render = () => {
+      // 간단 이징
+      current.rx += (target.rx - current.rx) * 0.18;
+      current.ry += (target.ry - current.ry) * 0.18;
+      card.style.setProperty('--rx', current.rx + 'deg');
+      card.style.setProperty('--ry', current.ry + 'deg');
+      if (Math.abs(current.rx - target.rx) > 0.01 || Math.abs(current.ry - target.ry) > 0.01) {
+        rafId = requestAnimationFrame(render);
+      } else {
+        rafId = null;
+      }
+    };
+
+    const loop = () => { if (!rafId) rafId = requestAnimationFrame(render); };
+
+    card.addEventListener('pointermove', onMove);
+    card.addEventListener('pointerleave', onLeave);
+  });
+})();
+
+function showToast(msg, ms=1600){
+  const el = document.createElement('div');
+  el.className = 'toast'; el.textContent = msg;
+  document.body.appendChild(el);
+  requestAnimationFrame(()=> el.classList.add('show'));
+  setTimeout(()=>{ el.classList.remove('show'); 
+    setTimeout(()=> el.remove(), 220);
+  }, ms);
+}
+  </script>
+</body>
+</html>
