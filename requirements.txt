@@ -15,5 +15,5 @@ python-multipart==0.0.9
 
 Pillow==10.4.0
 
-pandas==2.2.2
+pandas==2.1.4
 numpy==1.26.4
