@@ -1,0 +1,833 @@
+제출 시 recommend.html?q=... 로 필터를 인코딩해 전달
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NOVIC — AI 온보딩</title>
+  <meta name="color-scheme" content="dark light" />
+  <style>
+    body.show-summary .step:not([data-step="4"]) { display: none !important; }
+    :root{
+      --bg-1:#0e0e16; --bg-2:#1b1b29;
+      --card-1:#1a1a28; --card-2:#26263a;
+      --text-1:#ececec; --text-2:#b7b7c4;
+      --brand:#c5a028; --border:rgba(255,255,255,.12);
+      --radius:16px; --shadow:0 10px 30px rgba(0,0,0,.45);
+      --blur: saturate(120%) blur(6px);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; color:var(--text-1);
+      background: radial-gradient(1200px 800px at 20% 10%, #23233a, transparent 60%),
+                  radial-gradient(1000px 700px at 80% 90%, #1d1d2f, transparent 60%),
+                  linear-gradient(135deg, var(--bg-1), var(--bg-2));
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans KR",Arial,sans-serif;
+    }
+    body {
+        background: #ffffff !important;
+        color: #111 !important; /* 글씨는 진한색으로 */
+        }
+
+    .topbar{
+      position:sticky; top:0; z-index:10;
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:14px 16px; background:linear-gradient(180deg, rgba(20,20,30,.72), rgba(20,20,30,.38));
+      border-bottom:1px solid rgba(255,255,255,.08); backdrop-filter:var(--blur);
+    }
+    .logo{font-weight:900; letter-spacing:.6px; background:linear-gradient(180deg,#ffd86a,#c5a028 65%,#8a6c10); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-stroke:.4px rgba(0,0,0,.35);}
+    .back{appearance:none; border:1px solid var(--border); background:transparent; color:var(--text-1); padding:8px 12px; border-radius:999px; cursor:pointer;}
+
+    .wrap{max-width:880px; margin:0 auto; padding:22px 16px 48px;}
+    .panel{
+      background: linear-gradient(145deg, var(--card-2), var(--card-1));
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 20px; box-shadow: var(--shadow); padding: 18px;
+    }
+    .steps{display:grid; gap:18px;}
+    .step{display:grid; gap:14px;}
+    h1{margin:8px 0 2px; font-size:22px}
+    .desc{color:var(--text-2); margin:0 0 10px}
+
+    .group{display:grid; gap:10px}
+    .group-title{color:var(--text-2); font-size:12px; letter-spacing:.8px; text-transform:uppercase}
+    .chips{display:flex; flex-wrap:wrap; gap:10px}
+    .chip{display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); cursor:pointer; user-select:none}
+    .chip input{accent-color:var(--brand)}
+
+    .inputs{display:grid; grid-template-columns:repeat(2,1fr); gap:12px}
+    .field{display:grid; gap:6px}
+    .field input{
+      width:100%; padding:10px 12px; border-radius:10px;
+      border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.04); color:var(--text-1);
+    }
+    @media (max-width:560px){ .inputs{grid-template-columns:1fr} }
+
+    .switch{display:inline-flex; align-items:center; gap:8px; color:var(--text-2)}
+    .nav{display:flex; justify-content:space-between; gap:10px; margin-top:4px}
+    .btn{padding:10px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.04)); color:var(--text-1); font-weight:700; cursor:pointer}
+    .btn.ghost{background:transparent}
+    .btn.primary{background: color-mix(in srgb, var(--brand) 88%, #000 12%); color:#111; border-color:rgba(255,255,255,.16)}
+
+    .summary{background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:12px; color:var(--text-2)}
+
+    .toast {
+      position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%);
+      max-width: 90vw; padding: 12px 16px; border-radius: 12px;
+      background: rgba(20,20,30,.9); border: 1px solid rgba(255,255,255,.08);
+      box-shadow: 0 10px 28px rgba(0,0,0,.45); color: #fff; font-size: 14px; z-index: 9999; opacity: 0;
+      transition: opacity .2s ease, transform .2s ease;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(-6px); }
+
+    /* 스타일 라벨을 버튼처럼 보이되 삼각형 없이 */
+    .style-label{
+      appearance:none; background:transparent; border:0; padding:0;
+      font-weight:700; color:#111; cursor:pointer; text-align:left;
+    }
+    /* 기본은 접힘: aria-expanded="false" 일 때 strength 숨김 */
+    .chip-style[aria-expanded="false"] .style-strengths{ display:none; }
+
+
+    /* === Light override: 배경 흰색 + 로고 우측 상단 === */
+
+/* 배경/글자색을 라이트 톤으로 */
+    body{
+    background: #ffffff !important;
+    color: #111 !important;
+    }
+    .chip-style {
+      display: flex;
+      flex-direction: column;
+      padding: 6px 10px;
+      border: 1px solid #e5e7eb;
+      border-radius: 999px;
+      background: #f5f7fa;
+      margin: 6px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .style-label {
+      font-weight: bold;
+      color: #111;
+    }
+
+    .style-strengths {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .style-strengths button.selected {
+      font-weight: bold;
+      border: 2px solid #c5a028;
+      background: #fff8dc;
+    }
+
+
+    /* 상단바를 흰 배경으로, 얇은 경계/그림자 */
+    .topbar{
+    background: #ffffff !important;
+    border-bottom: 1px solid #e5e7eb !important; /* tailwind의 gray-200 정도 */
+    box-shadow: 0 2px 10px rgba(0,0,0,.04);
+    }
+
+    /* 로고를 우측으로 밀기 (HTML 수정 없이) */
+    .topbar .logo{
+    margin-left: auto;           /* 뒤로가기 버튼 다음, 오른쪽 끝으로 이동 */
+    }
+
+    /* 패널도 라이트 톤으로 */
+    .panel{
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    }
+
+    /* 설명/보조 텍스트 톤 살짝 어둡게 */
+    .desc, .group-title{
+    color: #6b7280 !important;   /* gray-500 느낌 */
+    }
+
+    /* 칩/인풋 라이트 톤 */
+    .chip{
+    background: #f5f7fa !important;
+    border: 1px solid #e5e7eb !important;
+    color: #111 !important;
+    }
+    .field input{
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    color: #111 !important;
+    }
+
+    /* 버튼 대비 유지 */
+    .btn{
+    color: #111 !important;
+    border-color: #e5e7eb !important;
+    background: linear-gradient(180deg, #fff, #f7f7f9) !important;
+    }
+    .btn.ghost{
+    background: transparent !important;
+    border-color: #e5e7eb !important;
+    }
+    .btn.primary{
+    background: color-mix(in srgb, var(--brand) 94%, #000 6%) !important;
+    color: #111 !important;
+    }
+
+    /* 토스트도 라이트로 */
+    .toast{
+    background: rgba(255,255,255,.98) !important;
+    border: 1px solid #e5e7eb !important;
+    color: #111 !important;
+    box-shadow: 0 10px 28px rgba(0,0,0,.08) !important;
+    }
+        /* === Floating Summary Dock === */
+    #summaryDock{
+    position: fixed; right: 16px; bottom: 16px;
+    width: min(420px, 92vw); max-height: 72vh; overflow: auto;
+    background: #ffffff; color:#111;
+    border: 1px solid #e5e7eb; border-radius: 14px;
+    box-shadow: 0 18px 46px rgba(0,0,0,.12);
+    z-index: 1000;
+    }
+    #summaryDock[hidden]{ display:none; }
+
+    #summaryDock .dock-head{
+    position: sticky; top:0;
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding: 12px 14px; background:#fff;
+    border-bottom:1px solid #e5e7eb;
+    }
+    #summaryDock .dock-body{ padding: 12px 14px; color:#374151; } /* gray-700 */
+    #summaryDock .dock-actions{
+    display:flex; justify-content:space-between; gap:10px; padding: 12px 14px;
+    border-top:1px solid #e5e7eb; background:#fafafa;
+    }
+    #summaryDock .dock-close{
+    appearance:none; border:1px solid #e5e7eb; background:#fff; color:#111;
+    padding:6px 10px; border-radius:8px; cursor:pointer;
+    }
+    /* 스타일 칩 컨테이너 줄바꿈 */
+    #styleContainer { flex-wrap: wrap; }
+
+    /* 더보기 영역을 flex + wrap으로 정렬 */
+    #moreStyles{
+      display: flex;        /* JS가 'flex'로 열 때 적용됨 */
+      flex-wrap: wrap;      /* >>> 줄바꿈 핵심 */
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    /* (선택) display:none일 때는 확실히 숨김 */
+    #moreStyles[hidden] { display: none !important; }
+
+
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <button class="back" onclick="history.back()">← 뒤로</button>
+    <div class="logo">NOVIC</div>
+    <button class="btn" id="btnMannequin" style="margin-left:auto">마네킹</button>
+  </header>
+
+  <main class="wrap">
+    <div class="panel">
+      <h1>AI 추천 설정</h1>
+      
+
+      <div class="steps">
+        <!-- Step 1 -->
+        <form class="step" data-step="1" aria-labelledby="s1">
+          <h3 id="s1">1) 성별을 선택하세요</h3>
+          <div class="chips" role="group" aria-label="성별">
+            <label class="chip"><input type="radio" name="gender" value="male" required> 남성</label>
+            <label class="chip"><input type="radio" name="gender" value="female"> 여성</label>
+            <label class="chip"><input type="radio" name="gender" value="any"> 상관없음</label>
+          </div>
+          
+        </form>
+
+        <!-- Step 2 -->
+        <form class="step" data-step="2" aria-labelledby="s2" hidden>
+          <h3 id="s2">2) 카테고리와 스타일을 고르세요</h3>
+
+          <div class="group">
+            <div class="group-title">카테고리</div>
+            <div class="chips" role="group" aria-label="카테고리">
+              <!-- ✅ 유니폼 하위 선택지: 처음엔 숨김 -->
+              <div id="uniformSubOptions" style="display:none; margin-top:10px; padding-left:12px;">
+                <div class="group-title">유니폼 종류</div>
+                <div class="chips" role="group" aria-label="유니폼 하위 카테고리">
+                  <label class="chip">
+                    <input type="radio" name="uniformType" value="soccer"> 축구
+                  </label>
+                  <label class="chip">
+                    <input type="radio" name="uniformType" value="baseball"> 야구
+                  </label>
+                  <label class="chip">
+                    <input type="radio" name="uniformType" value="basketball"> 농구
+                  </label>
+                </div>
+              </div>
+              <label class="chip"><input type="checkbox" name="categories" value="top"> 상의</label>
+              <label class="chip"><input type="checkbox" name="categories" value="bottom"> 하의</label>
+              <label class="chip"><input type="checkbox" name="categories" value="outer"> 아우터</label>
+              <label class="chip"><input type="checkbox" name="categories" value="shoes"> 신발</label>
+              <label class="chip"><input type="checkbox" name="categories" value="accessory"> 액세서리</label>
+              <label class="chip"><input type="checkbox" name="categories" value="uniform"> 유니폼</label>
+            </div>
+          </div>
+
+          <div class="group">
+            <div class="group-title">스타일(복수 선택)</div>
+            <div class="chips" role="group" aria-label="스타일" id="styleContainer">
+
+              <!-- 기본: 처음엔 접힘 -->
+              <div class="chip-style" data-style="classic" aria-expanded="false">
+                <button type="button" class="style-label">클래식</button>
+                <div class="style-strengths" hidden>
+                  <button type="button" data-value="0.33">약간</button>
+                  <button type="button" data-value="0.66">보통</button>
+                  <button type="button" data-value="0.99">과한</button>
+                </div>
+              </div>
+
+              <div class="chip-style" data-style="hiphop" aria-expanded="false">
+                <button type="button" class="style-label">힙합</button>
+                <div class="style-strengths" hidden>
+                  <button type="button" data-value="0.33">약간</button>
+                  <button type="button" data-value="0.66">보통</button>
+                  <button type="button" data-value="0.99">과한</button>
+                </div>
+              </div>
+
+              <div class="chip-style" data-style="cute" aria-expanded="false">
+                <button type="button" class="style-label">큐트</button>
+                <div class="style-strengths" hidden>
+                  <button type="button" data-value="0.33">약간</button>
+                  <button type="button" data-value="0.66">보통</button>
+                  <button type="button" data-value="0.99">과한</button>
+                </div>
+              </div>
+
+              <!-- 더보기: 처음엔 숨김 -->
+              <div id="moreStyles" style="display:none;">
+
+                <div class="chip-style" data-style="interview" aria-expanded="false">
+                  <button type="button" class="style-label">면접</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="date(first)" aria-expanded="false">
+                  <button type="button" class="style-label">첫 데이트</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="maturity" aria-expanded="false">
+                  <button type="button" class="style-label">성숙한</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="luxury" aria-expanded="false">
+                  <button type="button" class="style-label">고급스러운</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="date" aria-expanded="false">
+                  <button type="button" class="style-label">데이트</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="casual" aria-expanded="false">
+                  <button type="button" class="style-label">캐주얼</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="young" aria-expanded="false">
+                  <button type="button" class="style-label">영한</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="sexy" aria-expanded="false">
+                  <button type="button" class="style-label">섹시</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="trip" aria-expanded="false">
+                  <button type="button" class="style-label">여행</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="beautiful" aria-expanded="false">
+                  <button type="button" class="style-label">아름다운</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="lovely" aria-expanded="false">
+                  <button type="button" class="style-label">사랑스러운</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="unique" aria-expanded="false">
+                  <button type="button" class="style-label">독특한</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="pretty" aria-expanded="false">
+                  <button type="button" class="style-label">예쁜</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="picnic" aria-expanded="false">
+                  <button type="button" class="style-label">소풍</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="pattern" aria-expanded="false">
+                  <button type="button" class="style-label">패턴</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="scary" aria-expanded="false">
+                  <button type="button" class="style-label">무서운</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="influencer" aria-expanded="false">
+                  <button type="button" class="style-label">인플루언서</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="work" aria-expanded="false">
+                  <button type="button" class="style-label">직장인</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="nice" aria-expanded="false">
+                  <button type="button" class="style-label">단정한</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="party" aria-expanded="false">
+                  <button type="button" class="style-label">파티룩</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="sports" aria-expanded="false">
+                  <button type="button" class="style-label">스포츠</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+                <div class="chip-style" data-style="art" aria-expanded="false">
+                  <button type="button" class="style-label">예술적인</button>
+                  <div class="style-strengths" hidden>
+                    <button type="button" data-value="0.33">약간</button>
+                    <button type="button" data-value="0.66">보통</button>
+                    <button type="button" data-value="0.99">과한</button>
+                  </div>
+                </div>
+
+              </div><!-- /#moreStyles -->
+
+              <!-- 더보기 버튼 -->
+              <div style="margin-top:8px;">
+                <button type="button" id="btnMoreStyles" class="btn ghost">+ 더보기</button>
+              </div>
+
+            </div>
+          </div>
+
+
+
+
+        <!-- Step 3 -->
+        <form class="step" data-step="3" aria-labelledby="s3" hidden>
+          <h3 id="s3">3) 예산을 입력하세요 (₩)</h3>
+          <div class="inputs">
+            <label class="field"><span>최소 예산</span><input type="number" name="minBudget" inputmode="numeric" placeholder="예: 10000" min="0"></label>
+            <label class="field"><span>최대 예산</span><input type="number" name="maxBudget" inputmode="numeric" placeholder="예: 100000" min="0"></label>
+          </div>
+
+          <!-- ★ 추가: 추천 개수 -->
+          <label class="field">
+            <span>추천 개수</span>
+            <input type="number" name="topK" inputmode="numeric" min="1" max="50" value="12">
+          </label>
+
+          <label class="switch"><input type="checkbox" name="collabOnly"><span>콜라보 상품 필터링</span></label>
+
+          <div class="nav">
+            <button type="button" class="btn ghost prev">이전</button>
+            <button type="button" class="btn next" id="btnSummary">요약</button>
+          </div>
+          </form>
+        
+
+
+
+        <!-- Loading -->
+        <div class="step" data-step="5" aria-labelledby="s5" hidden>
+          
+        </div>
+      </div>
+    </div>
+  </main>
+  <div id="summaryDock" hidden>
+    <div class="dock-head">
+        <h3>확인하세요</h3>
+        <button type="button" class="dock-close" aria-label="요약 닫기">✕</button>
+    </div>
+    <div id="summaryBoxDock" class="dock-body"></div>
+    <div class="dock-actions">
+        <button type="button" class="btn ghost" id="btnSummaryClose">숨기기</button>
+        <button type="button" class="btn primary" id="doRecommendDock">AI 추천 받기</button>
+    </div>
+    </div>
+
+  <div id="toaster"></div>
+
+  <script>
+    // 토스트
+    function showToast(msg, ms=1600){
+      const el = document.createElement('div');
+      el.className = 'toast'; el.textContent = msg;
+      document.getElementById('toaster').appendChild(el);
+      requestAnimationFrame(()=> el.classList.add('show'));
+      setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=> el.remove(), 220); }, ms);
+    }
+
+    // 온보딩 상태 & 단계 전환
+    const steps = Array.from(document.querySelectorAll('.step'));
+    const state = {
+      step:1, gender:null, categories:[], styles:[],
+      minBudget:null, maxBudget:null, collabOnly:false,
+      uniformType:null,
+      topK: 12                // ★ 추가
+    };
+
+    function render(){ steps.forEach(s => s.hidden = Number(s.dataset.step) !== state.step); if(state.step===4) buildSummary(); }
+    function buildSummary() {
+    const budget = (state.minBudget == null && state.maxBudget == null)
+        ? '제한 없음'
+        : `${(state.minBudget ?? 0).toLocaleString('ko-KR')} ~ ${(state.maxBudget ?? Infinity) === Infinity ? '∞' : state.maxBudget.toLocaleString('ko-KR')} 원`;
+
+    const html = `
+      <ul style="margin:0; padding-left:16px; line-height:1.8;">
+        <li><b>성별</b>: ${state.gender || '-'}</li>
+        <li><b>카테고리</b>: ${state.categories.join(', ') || '-'}</li>
+        <li><b>스타일</b>: ${
+          Object.entries(state.styles)
+            .map(([style, weight]) => `${style} (${weight})`)
+            .join(', ') || '-'
+        }</li>
+        <li><b>예산</b>: ${budget}</li>
+        <li><b>추천 개수</b>: ${state.topK}</li>              <!-- ★ 추가 -->
+        <li><b>콜라보 전용</b>: ${state.collabOnly ? '예' : '아니오'}</li>
+      </ul>`;
+
+    const boxMain = document.getElementById('summaryBox');
+    const boxDock = document.getElementById('summaryBoxDock');
+    if (boxMain) boxMain.innerHTML = html;
+    if (boxDock) boxDock.innerHTML = html;
+    }
+
+
+
+
+    // 버튼 핸들러
+    // 다음 버튼 핸들러 (괄호 확실히 닫기)
+    
+// 다음 버튼 핸들러
+    document.querySelectorAll('.step .next').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const current = e.target.closest('.step');
+        const idx = Number(current.dataset.step);
+
+        if (idx === 1) {
+          const g = document.querySelector('input[name="gender"]:checked')?.value;
+          if (!g) { showToast('성별을 선택해주세요'); return; }
+          state.gender = g;
+        }
+
+        if (idx === 2) {
+          state.categories = Array.from(document.querySelectorAll('input[name="categories"]:checked')).map(i => i.value);
+          state.styles = {};
+          document.querySelectorAll('.chip-style').forEach(div => {
+            const styleName = div.dataset.style;
+            const selected = div.querySelector('.style-strengths button.selected');
+            if (selected) state.styles[styleName] = parseFloat(selected.dataset.value);
+          });
+          if (!state.categories.length) { showToast('카테고리를 1개 이상 선택해주세요'); return; }
+          if (Object.keys(state.styles).length === 0) { showToast('스타일을 1개 이상 선택해주세요'); return; }
+        }
+
+        if (idx === 3) {
+          const min  = document.querySelector('input[name="minBudget"]').value;
+          const max  = document.querySelector('input[name="maxBudget"]').value;
+          const kVal = document.querySelector('input[name="topK"]').value;
+
+          state.minBudget = min ? Number(min) : null;
+          state.maxBudget = max ? Number(max) : null;
+          state.topK      = kVal ? Math.min(50, Math.max(1, Number(kVal))) : 12; // ★ 추가
+          state.collabOnly = document.querySelector('input[name="collabOnly"]').checked || false;
+
+          if (state.minBudget != null && state.maxBudget != null && state.minBudget > state.maxBudget) {
+            showToast('최소 예산이 최대 예산보다 큽니다'); return;
+          }
+        }
+
+        state.step = Math.min(5, idx + 1);
+        render();
+      });
+    });
+
+    const uniformCheckbox = document.querySelector('input[name="categories"][value="uniform"]');
+    const uniformSubOptions = document.getElementById('uniformSubOptions');
+    uniformCheckbox.addEventListener('change', () => {
+      if (uniformCheckbox.checked) {
+        uniformSubOptions.style.display = 'block';
+      } else {
+        uniformSubOptions.style.display = 'none';
+        document.querySelectorAll('input[name="uniformType"]').forEach(el => el.checked = false);
+      }
+    });
+    document.querySelectorAll('input[name="uniformType"]').forEach(el => {
+      el.addEventListener('change', () => {
+        state.uniformType = document.querySelector('input[name="uniformType"]:checked')?.value || null;
+      });
+    });
+
+
+
+
+    // 떠 있는 요약 패널 토글
+    const summaryDock = document.getElementById('summaryDock');
+    function openSummaryDock(){
+    buildSummary();
+    summaryDock?.removeAttribute('hidden');
+    }
+    function closeSummaryDock(){
+    summaryDock?.setAttribute('hidden','');
+    }
+
+    // Step3의 "요약" 버튼을 토글 동작으로 바꿈
+    let isSummaryVisible = false;
+
+    
+
+
+    // 떠 있는 요약 닫기(× 버튼 / 숨기기 버튼)
+    document.getElementById('btnSummaryClose')?.addEventListener('click', closeSummaryDock);
+    document.querySelector('#summaryDock .dock-close')?.addEventListener('click', closeSummaryDock);
+    document.getElementById('btnSummary')?.addEventListener('click', () => {
+  // ✅ Step3 입력값 강제로 state에 반영
+      const min  = document.querySelector('input[name="minBudget"]').value;
+      const max  = document.querySelector('input[name="maxBudget"]').value;
+      const kVal = document.querySelector('input[name="topK"]').value;
+
+      state.minBudget = min ? Number(min) : null;
+      state.maxBudget = max ? Number(max) : null;
+      state.topK      = kVal ? Math.min(50, Math.max(1, Number(kVal))) : 12;
+      state.collabOnly = document.querySelector('input[name="collabOnly"]').checked || false;
+
+      // ✅ 성별도 혹시 누락 방지
+      const g = document.querySelector('input[name="gender"]:checked')?.value;
+      if (g) state.gender = g;
+
+      openSummaryDock();
+    });
+
+    // 떠 있는 요약에서 바로 제출 가능
+    document.getElementById('doRecommendDock')?.addEventListener('click', () => {
+    state.step = 5; render();
+    const payload = {
+      gender: state.gender,
+      categories: state.categories,
+      styles: state.styles,
+      budget: { min: state.minBudget, max: state.maxBudget },
+      collab_only: state.collabOnly,
+      uniform_type: state.uniformType,
+      top_k: state.topK              // ★ 추가
+    };
+    const q = encodeURIComponent(
+      btoa(unescape(encodeURIComponent(JSON.stringify({ filters: payload }))))
+    );
+    location.href = `recommend.html?q=${q}`;
+    });
+
+    document.querySelectorAll('.step .prev').forEach(btn=>{
+      btn.addEventListener('click', e=>{
+        const idx = Number(e.target.closest('.step').dataset.step);
+        state.step = Math.max(1, idx-1);
+        render();
+      });
+    });
+
+    // 최종 제출 → recommend.html 로 이동
+    document.getElementById('doRecommend')?.addEventListener('click', () => {
+      state.step = 5; render(); // 로딩 단계로 이동
+
+      const payload = {
+      gender: state.gender,
+      categories: state.categories,
+      styles: state.styles,
+      budget: { min: state.minBudget, max: state.maxBudget },
+      collab_only: state.collabOnly,
+      uniform_type: state.uniformType,
+      top_k: state.topK              // ★ 추가
+    };
+
+      const q = encodeURIComponent(
+        btoa(unescape(encodeURIComponent(JSON.stringify({ filters: payload }))))
+      );
+      location.href = `recommend.html?q=${q}`;
+    });
+
+    render();
+
+    
+
+
+    // 스타일 "더보기" 버튼 동작 추가
+    // 스타일 "더보기" 버튼 동작 (wrap 유지)
+    document.getElementById('btnMoreStyles')?.addEventListener('click', () => {
+      const more = document.getElementById('moreStyles');
+      const btn  = document.getElementById('btnMoreStyles');
+
+      // 현재 열림/닫힘 확인
+      const isOpen = more.style.display !== 'none' && more.style.display !== '';
+
+      // 열기: flex (CSS에서 flex-wrap 적용)
+      if (!isOpen) {
+        more.style.display = 'flex';
+        btn.textContent = '▲ 접기';
+      } else {
+        more.style.display = 'none';
+        btn.textContent = '+ 더보기';
+      }
+    });
+
+    // 라벨 클릭 → 열고닫기 (접근성까지)
+    document.querySelectorAll('.chip-style .style-label').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const wrap = btn.closest('.chip-style');
+        const panel = btn.nextElementSibling; // .style-strengths
+        const expanded = wrap.getAttribute('aria-expanded') === 'true';
+        wrap.setAttribute('aria-expanded', String(!expanded));
+        if (panel) panel.hidden = expanded; // true면 닫힘
+      });
+    });
+    document.querySelectorAll('.chip-style .style-strengths button').forEach(button => {
+      button.addEventListener('click', () => {
+        const parent = button.closest('.style-strengths');
+        parent.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
+        button.classList.add('selected');
+      });
+    });
+
+    // 카테고리 체크하면 바로 state에 반영
+    document.querySelectorAll('input[name="categories"]').forEach(el => {
+      el.addEventListener('change', () => {
+        state.categories = Array.from(
+          document.querySelectorAll('input[name="categories"]:checked')
+        ).map(i => i.value);
+      });
+    });
+
+    
+
+
+
+
+  </script>
+</body>
+</html>

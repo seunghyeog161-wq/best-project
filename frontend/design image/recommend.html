@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI 추천 결과 · 프리미엄 화이트</title>
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="AI가 엄선한 상품을 세련된 화이트 테마로 소개합니다.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    .badges{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+
+/* 브랜드 배지(모양은 기존 .badge 재사용) */
+    .badge.brand-badge { font-weight:700; }
+    .badge.brand-badge svg { width:16px; height:16px; }
+        :root{
+      --bg:#fff;
+      --surface:#ffffff;
+      --text:#0f172a;     /* Slate-900 */
+      --muted:#6b7280;    /* Gray-500 */
+      --line:#e5e7eb;     /* Gray-200 */
+      --accent:#c5a028;   /* Premium gold */
+      --accent-press:#a4881e;
+      --shadow:0 10px 30px rgba(2,6,23,.06), 0 2px 6px rgba(2,6,23,.04);
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:'Noto Sans KR', system-ui, -apple-system, Segoe UI, Roboto, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+      -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+      color:var(--text);
+      background:var(--bg);
+      letter-spacing:-0.2px;
+    }
+    /* === 추천 카드 그리드 === */
+    .count-controls{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:12px;flex-wrap:wrap}
+    .count-controls .hint{font-size:12px;color:var(--muted);padding:6px 8px;border:1px dashed var(--line);border-radius:999px;background:linear-gradient(#fff,#f8fafc)}
+    .count-controls input[type="range"]{width:min(420px,80vw)}
+    .count-controls input[type="number"]{width:80px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff}
+
+
+
+    .main{
+      min-height:100%;
+      display:flex; align-items:center; justify-content:center;
+      padding:48px 16px; position:relative; isolation:isolate;
+    }
+    /* 은은한 화이트 글로우 (배경은 순백 유지) */
+    .main::before,.main::after{
+      content:""; position:absolute; width:540px; height:540px; border-radius:50%;
+      filter:blur(60px); opacity:.18; z-index:-1;
+    }
+    .main::before{ top:-120px; left:-120px; background:radial-gradient(closest-side, #f8fafc, transparent); }
+    .main::after{ bottom:-160px; right:-160px; background:radial-gradient(closest-side, #f1f5f9, transparent); }
+
+    .card{
+      width:min(960px, 100%);
+      background:var(--surface);
+      border:1px solid var(--line);
+      border-radius:24px;
+      box-shadow:var(--shadow);
+      padding:32px 24px 28px;
+    }
+    .main{
+      /* 기존 속성 유지 + 아래 한 줄만 추가 */
+      flex-direction: column;  /* ⬅️ 세로로 쌓이게 */
+    }
+    .results{
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+
+    .header{ display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center; }
+    .badge{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 12px; border:1px solid var(--line); border-radius:999px;
+      font-size:12px; font-weight:600; color:#334155; background:linear-gradient(#fff, #f8fafc);
+    }
+    .badge svg{ width:16px; height:16px }
+
+    h1{ margin:6px 0 0; font-size:clamp(22px, 3vw, 32px); line-height:1.25; letter-spacing:-0.4px; }
+    .product{ margin-top:20px; font-size:clamp(20px, 2.6vw, 28px); font-weight:800; }
+
+    .actions{ margin-top:18px; }
+    .buy{
+      display:inline-flex; align-items:center; gap:10px; cursor:pointer;
+      padding:14px 22px; font-weight:700; font-size:16px; color:#fff; text-decoration:none;
+      background:var(--accent); border-radius:12px; border:1px solid rgba(0,0,0,.08);
+      box-shadow:0 8px 20px rgba(197,160,40,.25);
+      transition:transform .12s ease, box-shadow .2s ease, background-color .2s ease, filter .2s ease;
+    }
+    .buy:hover{ filter:saturate(1.05); transform:translateY(-1px) }
+    .buy:active{ background:var(--accent-press); transform:translateY(0) }
+    .buy:focus-visible{ outline:4px solid color-mix(in srgb, var(--accent) 30%, transparent) }
+    .buy .shine{ position:relative; overflow:hidden }
+    .buy .shine::after{
+      content:""; position:absolute; inset:0; translate:-120% 0; pointer-events:none;
+      background:linear-gradient(120deg, transparent 0 40%, rgba(255,255,255,.55) 50%, transparent 60% 100%);
+      animation:shine 3s linear infinite;
+    }
+    @keyframes shine{ 0%{ translate:-120% 0 } 100%{ translate:120% 0 } }
+
+    .gallery{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:24px; margin-top:28px; }
+    figure{
+      margin:0; border:1px solid var(--line); border-radius:18px; overflow:hidden; background:#fff;
+      box-shadow:0 6px 18px rgba(2,6,23,.04);
+      transition:transform .18s ease, box-shadow .18s ease; transform:translateZ(0); perspective:1000px;
+    }
+    figure:hover{ transform:translateY(-3px); box-shadow:0 12px 28px rgba(2,6,23,.08) }
+    img{ display:block; width:100%; height:auto; aspect-ratio:4/3; object-fit:cover; background:#f8fafc }
+    figcaption{ padding:10px 12px 12px; font-size:13px; color:#475569; text-align:center; border-top:1px dashed #eef2f7 }
+
+    footer{ margin-top:20px; text-align:center; color:var(--muted); font-size:12px; }
+
+    @media (max-width: 720px){
+      .card{ padding:24px 16px 22px; border-radius:20px }
+      .gallery{ grid-template-columns:1fr }
+    }
+  </style>
+</head>
+<body>
+  <main class="main">
+    <div id="results" class="results" aria-live="polite"></div>
+
+  </main>
+
+    <script>
+
+    // 이미지 에러 시 기본 플레이스홀더로 교체(숨기지 않음)
+    (function () {
+    const FALLBACK =
+        "data:image/svg+xml;utf8," +
+        encodeURIComponent(
+        "<svg xmlns='http://www.w3.org/2000/svg' width='800' height='600'>" +
+            "<rect fill='#f8fafc' width='100%' height='100%'/>" +
+            "<text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#6b7280' font-family='sans-serif' font-size='20'>이미지 없음</text>" +
+        "</svg>"
+        );
+
+    for (const img of document.querySelectorAll('.gallery img')) {
+        img.addEventListener('error', () => {
+        img.removeAttribute('srcset');
+        img.src = FALLBACK;          // 숨기지 말고 대체 이미지로
+        img.style.objectFit = 'contain';
+        img.style.background = '#f8fafc';
+        });
+    }
+    })();
+    // 부드러운 버튼 들어오기 모션
+    window.addEventListener('DOMContentLoaded', () => {
+      const btn = document.querySelector('.buy');
+      btn?.animate(
+        [{ transform: 'translateY(8px)', opacity: 0 }, { transform: 'translateY(0)', opacity: 1 }],
+        { duration: 420, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'both', delay: 120 }
+      );
+    });
+
+    // 이미지 에러 시 카드 숨김
+
+  </script>
+
+<script>
+let RECO_ALL = [];
+let RECO_FETCHED = false;
+const DEFAULT_COUNT = Math.max(1, Math.min(50, Number(localStorage.getItem('reco_count')) || 8));
+
+function clampCount(v){ v = Number(v)||1; return Math.max(1, Math.min(50, v)); }
+function syncCountInputs(v){
+  // 입력 컨트롤을 쓰지 않으므로 no-op (있어도 동작에 지장 없음)
+  const range = document.getElementById('countRange');
+  const num = document.getElementById('countNumber');
+  if (range) range.value = v;
+  if (num) num.value = v;
+}
+
+
+function getAccessToken() {
+  const sp = new URLSearchParams(location.search);
+  // ✅ 쿼리에서 우선 수집 (access_token, token, jwt 모두 지원)
+  const qsToken = sp.get('access_token') || sp.get('token') || sp.get('jwt');
+  if (qsToken) {
+    const clean = qsToken.replace(/^Bearer\s+/i, '');
+    try { localStorage.setItem('access_token', clean); } catch {}
+    // 주소창 정리
+    sp.delete('access_token'); sp.delete('token'); sp.delete('jwt');
+    const newUrl = location.pathname + (sp.toString() ? `?${sp}` : '') + location.hash;
+    history.replaceState(null, '', newUrl);
+    return clean;
+  }
+
+  // 저장소 우선
+  const KEYS = ['access_token','accessToken','jwt','token','id_token','authToken'];
+  for (const k of KEYS) {
+    const v = localStorage.getItem(k) || sessionStorage.getItem(k);
+    if (v) return v.replace(/^Bearer\s+/i,'');
+  }
+
+  // (httpOnly 아닌) 쿠키
+  const cookie = document.cookie || '';
+  for (const k of KEYS) {
+    const m = cookie.match(new RegExp('(?:^|;\\s*)' + k + '=([^;]+)'));
+    if (m) return decodeURIComponent(m[1]).replace(/^Bearer\s+/i,'');
+  }
+  return null;
+}
+
+
+
+function renderResults(n){
+  const container = document.getElementById('results');
+  if (!container) { console.error("❌ HTML에 <div id='results'></div> 컨테이너가 필요합니다!"); return; }
+
+  n = clampCount(n);                     // ✅ 1~50로 강제
+  localStorage.setItem('reco_count', String(n));
+  container.innerHTML = "";
+
+  const items = RECO_ALL.slice(0, n);
+  if (!items.length) {
+    if (RECO_FETCHED) {
+      container.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:16px">
+        표시할 추천이 없습니다.
+      </div>`;
+    }
+    return;
+  }
+
+  items.forEach(r => {
+    const card = document.createElement("section");
+    card.className = "card";
+    card.innerHTML = `
+      <div class="header">
+        <span class="badge brand-badge">${r.brand || '-'}</span>
+        <h2 data-field="name">${r.name || '-'}</h2>
+        <div>${(typeof r.price === 'number') ? r.price.toLocaleString("ko-KR") + "원" : (r.price || "-")}</div>
+        <div class="actions">
+          ${r.link ? `<a class="buy" data-field="link" href="${r.link}" target="_blank" rel="noopener noreferrer">
+            <span class="shine">상품 보러가기</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M7 17l10-10M9 7h8v8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>` : ""}
+        </div>
+      </div>
+
+      <div class="gallery">
+        <figure>
+          <img src="${API_BASE}${r.img_front || ''}"> alt="앞모습" loading="lazy" data-image-path="${r.image_path || ''}">
+          <figcaption>앞모습</figcaption>
+        </figure>
+        <figure>
+          <img src="${API_BASE}${r.img_back || ''}">f alt="뒷모습" loading="lazy" data-image-path="${r.image_path || ''}">
+          <figcaption>뒷모습</figcaption>
+        </figure>
+      </div>
+
+      <div class="rating" style="margin-top:14px;text-align:center;">
+        <div class="starRating" aria-label="별점 주기"></div>
+        <div class="ratingResult" style="margin-top:6px;color:#6b7280;"></div>
+      </div>
+    `;
+    container.appendChild(card);
+    (() => {
+      const FALLBACK =
+        "data:image/svg+xml;utf8," +
+        encodeURIComponent(
+          "<svg xmlns='http://www.w3.org/2000/svg' width='800' height='600'>" +
+            "<rect fill='#f8fafc' width='100%' height='100%'/>" +
+            "<text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='#6b7280' font-family='sans-serif' font-size='20'>이미지 없음</text>" +
+          "</svg>"
+        );
+
+      card.querySelectorAll('img').forEach((img) => {
+        const onErr = () => {
+          img.removeAttribute('srcset');
+          img.src = FALLBACK;
+          img.style.objectFit = 'contain';
+          img.style.background = '#f8fafc';
+        };
+        img.addEventListener('error', onErr, { once: true });
+
+        // src가 비어있거나 잘못된 경우 즉시 대체
+        if (!img.getAttribute('src')) onErr();
+      });
+    })();
+    
+  });
+
+
+  // 새로 추가된 카드에 별점 장착 (아래 별점 IIFE가 window.initRatings를 등록함)
+  if (window.initRatings) window.initRatings(container);
+}
+
+function initCountControls(){
+  // URL ?n=20 또는 ?count=20 → localStorage → 기본값 순으로 초기 개수 결정
+  const params = new URLSearchParams(location.search);
+  const fromUrl = parseInt(params.get('n') || params.get('count'), 10);
+  const saved   = parseInt(localStorage.getItem('reco_count') || '', 10);
+  const initial = clampCount(!isNaN(fromUrl) ? fromUrl : (!isNaN(saved) ? saved : DEFAULT_COUNT));
+
+  syncCountInputs(initial);
+  renderResults(initial);
+
+  // 키보드 단축키: -, +, 숫자(최대 2자리, 0.6초 내 연속 입력)
+  if (!window.__recoKeybindsInstalled) {
+    window.__recoKeybindsInstalled = true;
+
+    window.addEventListener('keydown', (e) => {
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return;
+
+      let c = parseInt(localStorage.getItem('reco_count') || initial, 10);
+      c = isNaN(c) ? initial : c;
+
+      if (e.key === '-' || e.key === '_') renderResults(clampCount(c - 1));
+      if (e.key === '=' || e.key === '+') renderResults(clampCount(c + 1));
+    });
+
+    let typed = ''; let timer = null;
+    window.addEventListener('keydown', (e) => {
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return;
+
+      if (e.key >= '0' && e.key <= '9') {
+        typed = (typed + e.key).slice(-2);
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          const v = parseInt(typed, 10);
+          if (!isNaN(v)) renderResults(clampCount(v));  // ✅ 1~50 보장
+          typed = '';
+        }, 600);
+      }
+    });
+  }
+}
+
+// === 데이터 가져오기 (단일 IIFE) ===
+function showStatus(msg){
+  const c = document.getElementById('results');
+  if (!c) return;
+  c.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:#6b7280;padding:16px">
+    ${msg}<br><small>Tip: -, +, 숫자키(최대 2자리)로 카드 개수 조절 (1~50)</small>
+  </div>`;
+}
+function normalizeResults(payload){
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.results)) return payload.results;
+  if (payload && Array.isArray(payload.items)) return payload.items;
+  if (payload && payload.data) {
+    if (Array.isArray(payload.data.results)) return payload.data.results;
+    if (Array.isArray(payload.data.items)) return payload.data.items;
+  }
+  return [];
+}
+
+(async () => {
+  const params = new URLSearchParams(location.search);
+  const q = params.get('q');
+
+  // q 없으면 안내만 하고 렌더 금지
+  if (!q) { showStatus("필터(q)가 없습니다. 추천 화면은 필터가 포함된 링크로 접근하세요."); return; }
+
+  try {
+    const TOKEN = getAccessToken();
+    const headers = TOKEN ? { 'Authorization': `Bearer ${TOKEN}` } : {};
+
+    const url = `${API_BASE}/api/reco/from_q?q=${encodeURIComponent(q)}`;
+    const res = await fetch(url, {
+      headers,
+      credentials: 'include',
+    });
+    url.searchParams.set('q', q);
+
+
+
+    if (!res.ok) {
+      const body = await res.text().catch(()=> '');
+      console.warn('from_q failed:', res.status, body);
+      showStatus(res.status === 401
+        ? '로그인이 필요합니다. (토큰 전송/만료 확인) '
+        : '추천 결과를 불러오지 못했습니다.');
+      return;
+    }
+    const data = await res.json();
+    RECO_ALL = normalizeResults(data);
+    RECO_FETCHED = true;
+
+    // ✅ 성공했을 때만 초기 렌더
+    initCountControls();
+  } catch (err) {
+    console.error('API fetch failed', err);
+    showStatus('네트워크 오류로 추천을 불러오지 못했습니다.');
+    return; // 실패 시 렌더 금지
+  }
+})();
+
+  (() => {
+    const TOKEN = getAccessToken();
+
+    function mountStars(starsEl, resultEl, item) {
+      function render(active = 0) {
+        starsEl.innerHTML = '';
+        for (let i = 1; i <= 5; i++) {
+          const star = document.createElement('span');
+          star.textContent = i <= active ? '★' : '☆';
+          star.style.cursor = 'pointer';
+          star.style.color  = i <= active ? '#c5a028' : '#d1d5db';
+          star.addEventListener('click', async () => {
+            render(i); // UI 즉시 반영
+            try {
+ 
+
+              const authHeader = TOKEN ? { 'Authorization': `Bearer ${TOKEN}` } : {};
+              const F = window.RECO_FILTERS || {};
+              const stylesDict = Array.isArray(F.styles)
+                ? Object.fromEntries(F.styles.map(k => [k, 1]))
+                : (F.styles || null);
+
+              const resp = await fetch(`${API_BASE}/api/reco/feedback/rating`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...authHeader },
+                credentials: 'include',
+                body: JSON.stringify({
+                  item_name: item?.name || 'unknown',
+                  link: item?.link || null,
+                  image_path: item?.image_path || null,
+                  rating: i,
+
+                  // ▼ 추천 컨텍스트 함께 저장
+                  rec_gender: F.gender ?? null,                          // "남성/여성/상관없음"(=both)
+                  rec_category: F.category ?? null,                      // 단일 카테고리
+                  rec_categories: F.categories ?? null,                  // 다중 카테고리 배열(예: ["상의","아우터"])
+                  rec_styles: stylesDict,                                // {힙합:0.99, 클래식:0.66, ...}
+                  rec_styles_str: window.stylesToShort(stylesDict),      // "힙합0.99,클래식0.66"
+                  rec_min_price: (F.budget?.min ?? F.min_price ?? null), // 최소 희망가
+                  rec_max_price: (F.budget?.max ?? F.max_price ?? null), // 최대 희망가
+                })
+              });
+              if (!resp.ok) {
+                resultEl.textContent = (resp.status === 401)
+                  ? '로그인이 필요합니다. 로그인 후 다시 시도해주세요.'
+                  : `별점 저장 실패 (${resp.status})`;
+                return;
+              }
+              resultEl.textContent = `평점: ${i}점 감사합니다!`;
+              try {
+                const ratings = JSON.parse(localStorage.getItem('ratings') || '{}');
+                if (item?.name) ratings[item.name] = i;
+                localStorage.setItem('ratings', JSON.stringify(ratings));
+              } catch {}
+            } catch (e) {
+              resultEl.textContent = '별점 저장 실패 😥';
+              console.error('[rating] fetch failed:', e);
+            }
+          });
+          starsEl.appendChild(star);
+        }
+      }
+      render(0);
+    }
+
+    // 한 카드의 아이템 정보 추출(브랜드/이름/링크/이미지 경로)
+    function extractItemFromCard(card) {
+      return {
+        name: card.querySelector('[data-field="name"]')?.textContent
+              || card.querySelector('.product')?.textContent
+              || 'unknown',
+        link: card.querySelector('[data-field="link"]')?.getAttribute('href')
+              || card.querySelector('.buy')?.getAttribute('href')
+              || null,
+        image_path: card.querySelector('[data-image-path]')?.getAttribute('data-image-path')
+              || window.RECO?.image_path
+              || null
+      };
+    }
+
+    // 문서(또는 새로 추가된 노드) 안의 모든 카드에 별점 장착
+    function initAllRatings(root = document) {
+      // 1) 새 구조: .card 안에 .starRating / .ratingResult (권장)
+      const starsBoxes = root.querySelectorAll('.card .starRating');
+      if (starsBoxes.length) {
+        starsBoxes.forEach(starsEl => {
+          const card = starsEl.closest('.card');
+          const resultEl = card.querySelector('.ratingResult');
+          const item = extractItemFromCard(card);
+          mountStars(starsEl, resultEl, item);
+        });
+      } else {
+        // 2) 구 구조: 단일 ID (호환)
+        const oldStars  = root.getElementById('starRating');
+        const oldResult = root.getElementById('ratingResult');
+        if (oldStars && oldResult) {
+          const fallbackItem = extractItemFromCard(document);
+          mountStars(oldStars, oldResult, fallbackItem);
+        }
+      }
+    }
+
+    // 새로 DOM에 추가되는 카드도 자동 초기화
+    const mo = new MutationObserver(muts => {
+      for (const m of muts) {
+        m.addedNodes.forEach(node => {
+          if (node.nodeType === 1) initAllRatings(node);
+        });
+      }
+    });
+    mo.observe(document.body, { childList: true, subtree: true });
+
+    // 전역 수동 초기화도 가능 (렌더 직후 window.initRatings() 호출)
+    window.initRatings = initAllRatings;
+
+    // 최초 1회
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => initAllRatings());
+    } else {
+      initAllRatings();
+    }
+  })();
+  (function(){
+    function b64ToJson(b64){
+      try { return JSON.parse(decodeURIComponent(escape(atob(b64)))); } catch(e){}
+      return JSON.parse(atob(b64));
+    }
+    const sp = new URLSearchParams(location.search);
+    const q  = sp.get('q');
+    window.RECO_FILTERS = null;
+    if (q) {
+      try {
+        const obj = b64ToJson(q);
+        window.RECO_FILTERS = obj.filters || obj;
+      } catch(e){ console.warn('q decode failed', e); }
+    }
+    // 스타일 dict → "힙합0.99,클래식0.66" 요약 문자열
+    window.stylesToShort = function(styles){
+      if (!styles) return null;
+      const s = Array.isArray(styles) ? Object.fromEntries(styles.map(k=>[k,1])) : styles;
+      return Object.entries(s).map(([k,v]) => `${k}${Number(v).toFixed(2)}`).join(',');
+    };
+  })();
+
+
+
+</script>
+
+</body>
+</html>

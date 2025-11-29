@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>사용자 기본정보 입력 • Demo</title>
+  <style>
+    :root{
+      --bg:#0e0e16; --panel:#121321; --text:#eaeaea; --muted:#b7b7c4;
+      --border:rgba(255,255,255,.12); --accent:#10b981; --btn:#1f2937; --btn2:#111827;
+      --radius:16px; --shadow:0 12px 28px rgba(0,0,0,.45);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0; background:var(--bg); color:var(--text); font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Apple Color Emoji,Noto Color Emoji,Helvetica,Arial,sans-serif}
+    .wrap{max-width:980px; margin:24px auto; padding:0 16px}
+    .card{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden}
+    .card-hd{display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--border)}
+    .card-bd{padding:16px}
+    .title{font-weight:700}
+    .row{display:grid; grid-template-columns:1fr; gap:14px}
+    @media(min-width:720px){.row{grid-template-columns:1fr 1fr}}
+    label{display:block; font-size:14px; color:var(--muted); margin:6px 0}
+    select,input[type="number"],input[type="text"],.btn{width:100%; padding:10px 12px; border-radius:12px; border:1px solid #2a2a3d; background:#0b0c12; color:var(--text)}
+    .btn{background:var(--btn); border-color:#2a2f3b; cursor:pointer}
+    .btn:hover{filter:brightness(1.06)}
+    .btn-ghost{background:#1b1f2b}
+    .btn-accent{background:var(--accent); color:#06291d; border-color:#0ca671}
+    .actions{display:flex; gap:8px; flex-wrap:wrap}
+    .hint{font-size:12px; color:#eab308}
+    .muted{color:var(--muted); font-size:13px}
+    .thumb{width:72px; height:72px; object-fit:cover; border-radius:12px; border:1px solid var(--border)}
+    .thumb-wrap{position:relative; display:inline-block}
+    .thumb-del{position:absolute; top:4px; right:4px; font-size:11px; padding:2px 6px; border-radius:8px; border:1px solid var(--border); background:#0008; color:#fff; display:none}
+    .thumb-wrap:hover .thumb-del{display:block}
+
+    /* modal */
+    .modal{position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:50}
+    .modal.show{display:flex}
+    .backdrop{position:absolute; inset:0; background:rgba(0,0,0,.6)}
+    .modal-card{position:relative; width:min(680px,92vw); background:var(--panel); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); padding:16px}
+
+    /* toast */
+    .toast{position:fixed; left:50%; transform:translateX(-50%); bottom:18px; background:#111827e6; border:1px solid var(--border); padding:10px 14px; border-radius:12px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="card-hd">
+        <div class="title">사용자 기본정보 입력</div>
+        <div class="actions">
+          <button class="btn btn-ghost" id="btnExport">JSON 내보내기</button>
+          <button class="btn btn-ghost" id="btnReset">초기화</button>
+          <button class="btn btn-accent" id="btnSave">저장</button>
+        </div>
+      </div>
+
+      <div class="card-bd">
+        <div class="row">
+          <div>
+            <label for="gender">성별</label>
+            <select id="gender">
+              <option value="male">남성</option>
+              <option value="female">여성</option>
+            </select>
+          </div>
+          <div>
+            <label for="age">나이</label>
+            <input id="age" type="number" placeholder="예: 17" />
+          </div>
+          <div>
+            <label for="height">키 (cm)</label>
+            <input id="height" type="number" placeholder="예: 175" />
+          </div>
+          <div>
+            <label for="weight">몸무게 (kg)</label>
+            <input id="weight" type="number" placeholder="예: 68" />
+          </div>
+
+          <div style="grid-column:1 / -1">
+            <label>얼굴 사진 (선택)</label>
+            <div class="actions">
+              <label class="btn">
+                얼굴 사진 업로드
+                <input id="faceFile" type="file" accept="image/*" style="display:none" />
+              </label>
+              <span class="muted" id="faceName"></span>
+              <button class="btn" id="btnFaceRemove" style="display:none">제거</button>
+            </div>
+            <p class="hint" id="faceHint" style="display:none">얼굴 사진이 있어 동의가 필요합니다. 저장 시 동의 팝업이 표시됩니다.</p>
+            <div id="facePreview" style="margin-top:8px"></div>
+          </div>
+
+          <div style="grid-column:1 / -1">
+            <label>전신/기타 사진 (여러 장 가능)</label>
+            <div class="actions">
+              <label class="btn">사진 추가
+                <input id="bodyFiles" type="file" accept="image/*" multiple style="display:none" />
+              </label>
+              <button class="btn" id="btnBodyClear" style="display:none">모두 제거</button>
+            </div>
+            <div id="bodyPreview" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 동의 모달 -->
+  <div class="modal" id="consentModal" aria-hidden="true">
+    <div class="backdrop" data-close></div>
+    <div class="modal-card">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px">
+        <div class="title" style="font-size:16px">얼굴 이미지 처리 동의</div>
+        <button class="btn" data-close>닫기</button>
+      </div>
+      <div class="muted" style="margin-bottom:10px">
+        얼굴 사진은 개인(민감)정보에 해당할 수 있습니다. 추천 정확도 향상을 위한 분석 목적으로만 사용되며, 데모에서는 브라우저 로컬저장소에 저장됩니다.
+        실제 서비스에서는 암호화·별도보관·보유기간 정책을 적용하세요.
+      </div>
+      <label style="display:flex; align-items:flex-start; gap:8px; margin:8px 0">
+        <input type="checkbox" id="consentFaceUse" />
+        <span>(필수) 얼굴 이미지 수집·이용에 동의합니다. (목적: 추천/분석, 보관: 로컬저장소/사용자 기기)</span>
+      </label>
+      <label style="display:flex; align-items:flex-start; gap:8px; margin:8px 0">
+        <input type="checkbox" id="consentSensitive" />
+        <span>(선택) 민감정보(생체정보) 처리에 동의합니다.</span>
+      </label>
+      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:12px">
+        <button class="btn" data-close>취소</button>
+        <button class="btn btn-accent" id="btnConsentConfirm">동의하고 계속</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" style="display:none"></div>
+
+  <script>
+    const LS_KEY = 'novic_user_profile_v1';
+    const CONSENT_KEY = 'novic_user_consent_v1';
+
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+    const elGender = $('#gender');
+    const elAge = $('#age');
+    const elHeight = $('#height');
+    const elWeight = $('#weight');
+
+    const elFaceFile = $('#faceFile');
+    const elFaceName = $('#faceName');
+    const elFaceRemove = $('#btnFaceRemove');
+    const elFacePreview = $('#facePreview');
+    const elFaceHint = $('#faceHint');
+
+    const elBodyFiles = $('#bodyFiles');
+    const elBodyClear = $('#btnBodyClear');
+    const elBodyPreview = $('#bodyPreview');
+
+    const btnSave = $('#btnSave');
+    const btnReset = $('#btnReset');
+    const btnExport = $('#btnExport');
+
+    const consentModal = $('#consentModal');
+    const consentFaceUse = $('#consentFaceUse');
+    const consentSensitive = $('#consentSensitive');
+    const btnConsentConfirm = $('#btnConsentConfirm');
+
+    const toast = $('#toast');
+
+    let facePhoto = null; // { name, dataUrl }
+    let bodyPhotos = [];  // [{ name, dataUrl }]
+
+    function showToast(msg, ms=1400){
+      toast.textContent = msg; toast.style.display='block';
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(()=>{toast.style.display='none'}, ms);
+    }
+
+    function clamp(n, min, max){ return Math.min(max, Math.max(min, Number(n))); }
+
+    function loadLS(){
+      try{
+        const raw = localStorage.getItem(LS_KEY);
+        if(raw){
+          const d = JSON.parse(raw);
+          elGender.value = d.gender ?? '';
+          elAge.value = d.age ?? '';
+          elHeight.value = d.heightCm ?? '';
+          elWeight.value = d.weightKg ?? '';
+          facePhoto = d.facePhoto ?? null;
+          bodyPhotos = d.bodyPhotos ?? [];
+          renderFace();
+          renderBodies();
+        }
+        const cRaw = localStorage.getItem(CONSENT_KEY);
+        if(cRaw){
+          const c = JSON.parse(cRaw);
+          consentFaceUse.checked = !!c.consentFaceUse;
+          consentSensitive.checked = !!c.consentSensitive;
+        }
+      }catch(e){console.warn('restore failed', e)}
+    }
+
+    function renderFace(){
+      elFacePreview.innerHTML = '';
+      if(facePhoto){
+        const img = new Image(); img.src = facePhoto.dataUrl; img.className='thumb';
+        elFacePreview.appendChild(img);
+        elFaceName.textContent = facePhoto.name;
+        elFaceRemove.style.display = 'inline-block';
+        elFaceHint.style.display = consentFaceUse.checked ? 'none' : 'block';
+      } else {
+        elFaceName.textContent = '';
+        elFaceRemove.style.display = 'none';
+        elFaceHint.style.display = 'none';
+      }
+    }
+
+    function renderBodies(){
+      elBodyPreview.innerHTML = '';
+      if(bodyPhotos.length){ elBodyClear.style.display='inline-block'; } else { elBodyClear.style.display='none'; }
+      bodyPhotos.forEach((p, i)=>{
+        const wrap = document.createElement('div'); wrap.className='thumb-wrap';
+        const img = new Image(); img.src = p.dataUrl; img.className='thumb';
+        const del = document.createElement('button'); del.className='thumb-del'; del.textContent='제거';
+        del.addEventListener('click', ()=>{ bodyPhotos.splice(i,1); renderBodies(); });
+        wrap.appendChild(img); wrap.appendChild(del); elBodyPreview.appendChild(wrap);
+      });
+    }
+
+    function openModal(){ consentModal.classList.add('show'); consentModal.setAttribute('aria-hidden','false'); }
+    function closeModal(){ consentModal.classList.remove('show'); consentModal.setAttribute('aria-hidden','true'); }
+
+    $$("[data-close]").forEach(btn=> btn.addEventListener('click', closeModal));
+
+    async function fileToDataURLLimited(file, maxW=1024, maxH=1024){
+      const dataUrl = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); });
+      if(!String(file.type).startsWith('image/')) return dataUrl;
+      const img = new Image(); await new Promise((res,rej)=>{ img.onload=res; img.onerror=rej; img.src=dataUrl; });
+      const {width, height} = img; const scale = Math.min(1, maxW/width, maxH/height);
+      if(scale >= 1) return dataUrl;
+      const canvas = document.createElement('canvas'); canvas.width = Math.round(width*scale); canvas.height = Math.round(height*scale);
+      const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL('image/jpeg', 0.9);
+    }
+
+    elFaceFile.addEventListener('change', async (e)=>{
+      const f = e.target.files && e.target.files[0]; if(!f) return;
+      const dataUrl = await fileToDataURLLimited(f);
+      facePhoto = { name: f.name, dataUrl };
+      renderFace();
+    });
+
+    elFaceRemove.addEventListener('click', ()=>{ facePhoto = null; renderFace(); });
+
+    elBodyFiles.addEventListener('change', async (e)=>{
+      const fs = Array.from(e.target.files || []); if(!fs.length) return;
+      for(const f of fs){ const dataUrl = await fileToDataURLLimited(f); bodyPhotos.push({ name: f.name, dataUrl }); }
+      renderBodies();
+    });
+
+    elBodyClear.addEventListener('click', ()=>{ bodyPhotos = []; renderBodies(); });
+
+    function validate(){
+        // 값이 들어온 경우에만 숫자/범위 검증
+        if(elHeight.value !== ''){
+            const h = Number(elHeight.value);
+            if(isNaN(h)) return '키(cm)를 올바르게 입력하세요.';
+            if(h < 80 || h > 250) return '키(cm)는 80~250 범위로 입력하세요.';
+        }
+
+        if(elWeight.value !== ''){
+            const w = Number(elWeight.value);
+            if(isNaN(w)) return '몸무게(kg)를 올바르게 입력하세요.';
+            if(w < 20 || w > 300) return '몸무게(kg)는 20~300 범위로 입력하세요.';
+        }
+
+        if(elAge.value !== ''){
+            const a = Number(elAge.value);
+            if(isNaN(a)) return '나이를 올바르게 입력하세요.';
+            if(a < 5 || a > 120) return '나이는 5~120 범위로 입력하세요.';
+        }
+
+        // 성별은 선택 사항: 빈 값 허용
+        return null;
+        }
+
+    function requireConsent(){ return !!facePhoto && !consentFaceUse.checked; }
+
+    function persist(){
+      const payload = {
+        gender: elGender.value,
+        heightCm: elHeight.value,
+        weightKg: elWeight.value,
+        age: elAge.value,
+        facePhoto,
+        bodyPhotos,
+        savedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(LS_KEY, JSON.stringify(payload));
+      showToast('저장되었습니다.');
+    }
+
+    btnSave.addEventListener('click', ()=>{
+      const err = validate(); if(err){ showToast(err, 1600); return; }
+      if(requireConsent()){ openModal(); return; }
+      persist();
+    });
+
+    btnConsentConfirm.addEventListener('click', ()=>{
+      if(!consentFaceUse.checked){ return; }
+      const consent = { consentFaceUse: !!consentFaceUse.checked, consentSensitive: !!consentSensitive.checked, consentedAt: new Date().toISOString() };
+      localStorage.setItem(CONSENT_KEY, JSON.stringify(consent));
+      closeModal();
+      persist();
+    });
+
+    btnExport.addEventListener('click', ()=>{
+      const profileRaw = localStorage.getItem(LS_KEY) || '{}';
+      const consentRaw = localStorage.getItem(CONSENT_KEY) || '{}';
+      const blob = new Blob([JSON.stringify({ profile: JSON.parse(profileRaw), consent: JSON.parse(consentRaw) }, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `novic_user_profile_${Date.now()}.json`; a.click(); URL.revokeObjectURL(url);
+    });
+
+    btnReset.addEventListener('click', ()=>{
+      elGender.value=''; elAge.value=''; elHeight.value=''; elWeight.value='';
+      facePhoto=null; bodyPhotos=[]; renderFace(); renderBodies();
+      localStorage.removeItem(LS_KEY);
+      showToast('초기화 완료');
+    });
+
+    // 초기 로드
+    loadLS();
+  </script>
+</body>
+</html>

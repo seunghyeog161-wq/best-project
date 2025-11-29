@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>취향 조사</title>
+<style>
+  :root { --w: min(960px, 100%); }
+  body{margin:0;background:#f6f7fb;font-family:system-ui,Arial}
+  .wrap{width:var(--w);margin:24px auto;padding:12px}
+  iframe{width:100%;height:1600px;border:0;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.08)}
+  .fallback{display:none;text-align:center;padding:40px;background:#fff;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.08)}
+  .btn{display:inline-block;padding:12px 18px;border-radius:10px;border:1px solid #ddd;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="fallback" class="fallback">
+    <p>현재 환경(인앱/임베드)에서 구글 로그인이 제한돼요.<br/>아래 버튼으로 <b>새 탭</b>에서 열어주세요.</p>
+    <a class="btn" href="https://docs.google.com/forms/d/e/1FAIpQLSfAowyEcuNNY5nga4p0H12FQrERcH0XUu33kw6rwQVW2xQxhg/viewform?usp=header"
+       target="_blank" rel="noopener">새 탭에서 열기</a>
+  </div>
+
+  <!-- 로그인 끄면 아래 iframe로 바로 표시됨. 로그인 켜면 보통 막혀서 fallback으로 전환 -->
+  <iframe id="formFrame"
+    src="https://docs.google.com/forms/d/e/1FAIpQLSfAowyEcuNNY5nga4p0H12FQrERcH0XUu33kw6rwQVW2xQxhg/viewform?embedded=true"
+    referrerpolicy="no-referrer-when-downgrade">Loading…</iframe>
+</div>
+
+<script>
+(function(){
+  const ua = navigator.userAgent.toLowerCase();
+  // 대표적 인앱 브라우저 감지
+  const isInApp = ua.includes('kakaotalk') || ua.includes('instagram') ||
+                  ua.includes('line') || ua.includes('fbav') ||
+                  ua.includes('naver') || ua.includes('daumapps');
+
+  const iframe = document.getElementById('formFrame');
+  const fallback = document.getElementById('fallback');
+
+  if (isInApp) {
+    iframe.style.display = 'none';
+    fallback.style.display = 'block';
+    return;
+  }
+
+  // 3초 내 로드 안 되면(로그인/쿠키/보안으로 막힘) → 우회 버튼
+  let loaded = false;
+  iframe.addEventListener('load', () => { loaded = true; });
+  setTimeout(() => {
+    if (!loaded) {
+      iframe.style.display = 'none';
+      fallback.style.display = 'block';
+    }
+  }, 3000);
+})();
+</script>
+</body>
+</html>
