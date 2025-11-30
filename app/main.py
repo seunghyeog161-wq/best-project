@@ -259,7 +259,7 @@ class UserOut(BaseModel):
 app = FastAPI(title="Auth Backend (single file)", debug=(APP_ENV == "dev"))
 from app.reco import MEDIA_DIR, router as reco_router
 
-app.include_router(reco_router, prefix="")
+app.include_router(reco_router, prefix="/api/reco")
 FRONTEND_DIR = BASE_DIR / "frontend"
 app.mount("/frontend", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
 
@@ -846,6 +846,7 @@ def auth_after(request: Request, access_token: str, db: Session = Depends(get_db
   </div>
 </body></html>"""
     return HTMLResponse(html, status_code=200)
+
 
 
 
