@@ -847,12 +847,15 @@ def auth_after(request: Request, access_token: str, db: Session = Depends(get_db
 </body></html>"""
     return HTMLResponse(html, status_code=200)
 
-@app.get("/google83c0ba022345b400.html")
+from pathlib import Path
+
+VERIFY_FILE = Path(__file__).resolve().parent.parent / "google83c0ba022345b400.html"
+
+@app.get("/google83c0ba022345b400.html", response_class=FileResponse)
 def google_verify():
-    return FileResponse(
-        BASE_DIR / "google83c0ba022345b400.html",
-        media_type="text/html"
-    )
+    if VERIFY_FILE.exists():
+        return FileResponse(str(VERIFY_FILE), media_type="text/html")
+    return PlainTextResponse("File not found", status_code=404)
 
 
 
