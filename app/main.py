@@ -847,6 +847,12 @@ def auth_after(request: Request, access_token: str, db: Session = Depends(get_db
 </body></html>"""
     return HTMLResponse(html, status_code=200)
 
+@app.get("/google83c0ba022345b400.html")
+def google_verify():
+    return FileResponse(
+        BASE_DIR / "google83c0ba022345b400.html",
+        media_type="text/html"
+    )
 
 
 
