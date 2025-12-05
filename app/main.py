@@ -59,38 +59,28 @@ def _desktop_dir() -> Path:
 DESKTOP_DIR = _desktop_dir()
 FAVICON_ICO = DESKTOP_DIR / "favicon.ico"
 
-# app/main.py
-
-
-
-
-
-
-
-
+# ----------------------------------------------------------
+# 안전한 login.html 탐색 (Vercel 환경에서도 절대 오류 안남)
+# ----------------------------------------------------------
 
 def _find_login_html() -> Path | None:
+    # ① .env에서 직접 지정한 경우
     env_path = os.getenv("FRONTEND_LOGIN_FILE")
     if env_path:
         p = Path(env_path).expanduser().resolve()
         if p.exists():
             return p
 
-    for p in (BASE_DIR / "frontend").rglob("login.html"):
-        return p
-
-    home = Path.home()
-    candidates = [
-        home / "OneDrive" / "바탕 화면" / "login.html",
-        home / "OneDrive" / "Desktop" / "login.html",
-        home / "바탕 화면" / "login.html",
-        home / "Desktop" / "login.html",
-        home / "바탕화면" / "login.html",
-    ]
-    for p in candidates:
-        if p.exists():
+    # ② 프로젝트의 /frontend 폴더 내부 검색 (Vercel 배포용)
+    frontend_dir = BASE_DIR / "frontend"
+    if frontend_dir.exists():
+        for p in frontend_dir.rglob("login.html"):
             return p
+
+    # ③ Vercel에서는 바탕화면 / OneDrive 경로를 탐색하면 안 됨 → 제거!
+    # (로컬 개발용 경로 탐색은 오류 유발하므로 비활성화)
     return None
+
 
 LOGIN_HTML = _find_login_html()
 
@@ -259,6 +249,7 @@ class UserOut(BaseModel):
 app = FastAPI(title="Auth Backend (single file)", debug=(APP_ENV == "dev"))
 from app.reco import MEDIA_DIR, router as reco_router
 
+# prefix="" → "/api/reco" 로 변경
 app.include_router(reco_router, prefix="/api/reco")
 FRONTEND_DIR = BASE_DIR / "frontend"
 app.mount("/frontend", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
@@ -300,9 +291,12 @@ if SERVE_LOGIN_ASSETS:
 # app/main.py — 루트("/") 라우트 교체
 from fastapi.responses import RedirectResponse, HTMLResponse, FileResponse
 
+# ----------------------------------------------------------
+# "/" 라우트 – login.html 정상 제공 또는 안전한 fallback
+# ----------------------------------------------------------
+
 @app.get("/", response_class=HTMLResponse)
 def serve_login():
-    # 1) 바탕화면/프로젝트 등에서 login.html 찾기 (이미 위에서 LOGIN_HTML 계산함)
     if LOGIN_HTML and LOGIN_HTML.exists():
         return FileResponse(
             str(LOGIN_HTML),
@@ -310,18 +304,15 @@ def serve_login():
             headers={"Cache-Control": "no-cache"}
         )
 
-    # 2) (대안) frontend/index.html이 있으면 거기로 리다이렉트
-    idx = FRONTEND_DIR / "index.html"
-    if idx.exists():
-        return RedirectResponse("/frontend/index.html", status_code=302)
-
-    # 3) 둘 다 없으면 안내
+    # login.html 없으면 기본 메시지만 출력 (오류 없이 정상 동작)
     return HTMLResponse(
-        "<h1>login.html을 찾을 수 없습니다</h1>"
-        "<p>.env에 <b>FRONTEND_LOGIN_FILE=경로</b> 를 지정하거나,<br>"
-        "<code>프로젝트/frontend/</code> 또는 바탕화면에 <b>login.html</b>을 두세요.</p>",
-        status_code=404,
+        "<h1>FastAPI on Vercel</h1>"
+        "<p>login.html 을 찾지 못했습니다.<br>"
+        "frontend/login.html 파일을 프로젝트에 추가하거나,<br>"
+        ".env 에 FRONTEND_LOGIN_FILE=경로 를 추가하세요.</p>",
+        status_code=200
     )
+
 
 # 선택: /login.html로 접근해도 동일 동작 원하면 유지
 @app.get("/login.html")
@@ -846,16 +837,6 @@ def auth_after(request: Request, access_token: str, db: Session = Depends(get_db
   </div>
 </body></html>"""
     return HTMLResponse(html, status_code=200)
-
-from pathlib import Path
-
-VERIFY_FILE = Path(__file__).resolve().parent.parent / "google83c0ba022345b400.html"
-
-@app.get("/google83c0ba022345b400.html", response_class=FileResponse)
-def google_verify():
-    if VERIFY_FILE.exists():
-        return FileResponse(str(VERIFY_FILE), media_type="text/html")
-    return PlainTextResponse("File not found", status_code=404)
 
 
 
