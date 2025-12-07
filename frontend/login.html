@@ -229,6 +229,8 @@
 
 <!-- ↓↓↓ 이 스크립트를 </body> 바로 위에 붙여 넣기 ↓↓↓ -->
 <script>
+const API_BASE = "https://best-project-17.onrender.com";
+
   // ─────────────────────────────────────────────────────────
   // (A) 톱니바퀴 드롭다운
   // ─────────────────────────────────────────────────────────
@@ -329,16 +331,16 @@
   // (E) 소셜 로그인 버튼 연결 (그대로 유지)
   // ─────────────────────────────────────────────────────────
   document.getElementById('google-btn')?.addEventListener('click', () => {
-    location.href = 'https://myproject-ai1.vercel.app/auth/google/login';// '/auth/google'도 동작하지만, 일관되게 /login 사용
+    location.href = `${API_BASE}/auth/google/login`
   });
   document.querySelector('.btn.facebook')?.addEventListener('click', () => {
-    location.href = 'https://myproject-ai1.vercel.app/auth/facebook/login';
+    location.href = `${API_BASE}/auth/facebook/login`;
   });
   document.querySelector('.btn.instagram')?.addEventListener('click', () => {
     toast('Instagram 로그인은 준비 중입니다.\n(페이스북/네이버를 먼저 이용해 주세요)');
   });
   document.getElementById('naver-btn')?.addEventListener('click', () => {
-    location.href = 'https://myproject-ai1.vercel.app/auth/naver/login';
+    location.href = `${API_BASE}/auth/naver/login`;
   });
 
   // ─────────────────────────────────────────────────────────
@@ -362,15 +364,15 @@
       const pw = inputPw?.value;
 
       if (email && pw){
-        const r = await api('/auth/login', 'POST', { email, password: pw });
+        const r = await api(`${API_BASE}/auth/login`, 'POST', { email, password: pw });
         localStorage.setItem('access_token', r.access_token);
         toast('로그인 성공!');
-        location.href = 'https://myproject-ai1.vercel.app/login2.html'; // 수정
+        location.href = 'https://myproject-ai1.vercel.app/index.html';
       } else {
         let token = localStorage.getItem('access_token');
         if (!token) {
           try {
-            const r = await api('https://myproject-ai1.vercel.app/auth/refresh', 'POST');
+            const r = await api(`${API_BASE}/auth/refresh`, 'POST');
             localStorage.setItem('access_token', r.access_token);
             token = r.access_token;
           } catch (_) {
@@ -378,9 +380,9 @@
             return;
           }
         }
-        const me = await api('https://myproject-ai1.vercel.app/auth/me', 'GET', null, true);
+        const me = await api(`${API_BASE}/auth/me`, 'GET', null, true);
         toast(`환영합니다, ${me.name ?? me.email}님!`);
-        location.href = 'https://myproject-ai1.vercel.app/login2.html'; 수정
+        location.href = 'https://myproject-ai1.vercel.app/index.html';
       }
     } catch (e) {
       toast(e.message || '로그인 중 오류가 발생했습니다.');
@@ -414,15 +416,17 @@
       if (pw.length < 8) { toast('비밀번호는 8자 이상이어야 합니다.'); return; }
       if (pw !== pw2) { toast('비밀번호가 일치하지 않습니다.'); return; }
 
-      await api('https://myproject-ai1.vercel.app/auth/register', 'POST', { email, password: pw, name: name || null });
+      await api(`${API_BASE}/auth/register`, 'POST', {
+          email, password: pw, name
+      });
 
       toast('회원가입이 완료되었습니다.');
 
       // 자동 로그인
-      const { access_token } = await api('/auth/login', 'POST', { email, password: pw });
+      const { access_token } = await api(`${API_BASE}/auth/login`, 'POST', { email, password: pw });
       localStorage.setItem('access_token', access_token);
       toast('자동 로그인 완료!');
-      location.href = 'https://myproject-ai1.vercel.app/login2.html';// 수정
+      location.href = 'https://myproject-ai1.vercel.app/index.html';
     } catch (e) {
       toast(e.message || '회원가입 중 오류가 발생했습니다.');
     } finally {

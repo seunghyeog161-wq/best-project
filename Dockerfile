@@ -16,4 +16,9 @@ COPY ./README.md ./README.md
 EXPOSE 10000
 
 # FastAPI 실행 (main.py 경로와 FastAPI 객체명이 정확)
+<<<<<<< HEAD
 CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", "--bind", "0.0.0.0:10000", "--timeout", "120"]
+=======
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", "--bind", "0.0.0.0:10000", "--timeout", "120"]
+
+>>>>>>> f14a3520ceef0b060a14ed4ae7bdbff0a33cfe82
